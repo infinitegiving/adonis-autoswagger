@@ -1080,6 +1080,9 @@ export class InterfaceParser {
         }
         nl = `${f}: ${t}${comma}`;
       }
+      if (line.endsWith("}") && l[index + 1] && !l[index + 1].endsWith("}")) {
+        nl += ",";
+      }
       ifs[name] += nl;
     });
 
