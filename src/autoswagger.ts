@@ -669,6 +669,8 @@ export class AutoSwagger {
       file = file.replace(".ts", "");
       const split = file.split("/");
       let name = split[split.length - 1].replace(".ts", "");
+      if (this.options.models.exclude.includes(name)) 
+        continue;
       file = file.replace("app/", "/app/");
       const parsed = this.modelParser.parseModelProperties(data);
       if (parsed.name !== "") {

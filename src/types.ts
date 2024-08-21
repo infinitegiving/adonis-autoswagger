@@ -21,6 +21,9 @@ export interface options {
   securitySchemes?: any;
   authMiddlewares?: string[];
   defaultSecurityScheme?: string;
+  models: {
+    exclude: string[];
+  };
 }
 
 export interface common {
