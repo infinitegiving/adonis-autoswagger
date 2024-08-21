@@ -584,8 +584,10 @@ export class ModelParser {
         const l = lines[index - 1];
         let en = getBetweenBrackets(l, "enum");
         if (en !== "") {
+          const isArray = l.includes("[]")
           enums = en.split(",");
           example = enums[0];
+          type = isArray ? "string[]" : "string";
         }
       }
 
