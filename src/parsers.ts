@@ -333,7 +333,7 @@ export class CommentParser {
     };
   }
 
-  private parseBody(rawLine: string, type: string) {
+  private parseBody(rawLine: string = '', type: string) {
     let line = rawLine.replace(`@${type} `, "");
 
     const isJson = isJSONString(line);
