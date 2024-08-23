@@ -981,8 +981,13 @@ export class InterfaceParser {
       type = type.replace("[]", "");
       isArray = true;
     }
-    let prop: any = { type: type };
     let meta = "";
+    if (type.includes("@enum")) {
+      // Extract the enum values from the line
+      meta = type.substring(type.indexOf("@enum"));
+      type = "string";
+    }
+    let prop: any = { type: type };
     let en = getBetweenBrackets(meta, "enum");
     let example = getBetweenBrackets(meta, "example");
     let enums = [];
@@ -1018,6 +1023,9 @@ export class InterfaceParser {
 
       prop[indicator] = type;
       prop["example"] = example;
+      if (enums.length > 0) {
+        prop["enum"] = enums.map((e) => e.trim()); // Clean the enum by removing start and end spaces
+      }
       prop["nullable"] = notRequired;
     }
     if (isArray) {
