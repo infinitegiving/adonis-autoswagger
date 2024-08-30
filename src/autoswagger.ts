@@ -678,10 +678,13 @@ export class AutoSwagger {
       }
       let schema = {
         type: "object",
-        required: parsed.required,
         properties: parsed.props,
         description: name + " (Model)",
       };
+      //Only add if there are required properties on the model
+      if (parsed.required.length > 0) {
+        schema["required"] = parsed.required;
+      }
       models[name] = schema;
     }
     return models;
