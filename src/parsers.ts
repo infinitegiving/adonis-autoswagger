@@ -319,18 +319,21 @@ export class CommentParser {
     }
     }
     // No need to try/catch this JSON.parse as we already did that in the isJSONString function
-
-    return {
+    let schema = {
       content: {
         "multipart/form-data": {
           schema: {
             type: "object",
             properties: json,
-            required,
           },
         },
       },
     };
+    // Only add required if there are any
+    if (required.length > 0) {
+      schema.content["multipart/form-data"]["schema"]["required"] = required;
+    }
+    return schema
   }
 
   private parseBody(rawLine: string = '', type: string) {
