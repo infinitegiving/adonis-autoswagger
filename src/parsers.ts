@@ -270,7 +270,8 @@ export class CommentParser {
 
   private parseRequestFormDataBody(rawLine: string) {
     const line = rawLine.replace("@requestFormDataBody ", "");
-    let json = {}, required = [];
+    let json = {},
+      required = [];
     const isJson = isJSONString(line);
     if (!isJson) {
       // try to get json from reference
@@ -284,7 +285,8 @@ export class CommentParser {
       let props = [];
       const ref = this.exampleGenerator.schemas[cleandRef];
       const ks = [];
-      if (ref.required && Array.isArray(ref.required)) required.push(...ref.required)
+      if (ref.required && Array.isArray(ref.required))
+        required.push(...ref.required);
       Object.entries(ref.properties).map(([key, value]) => {
         if (typeof parsedRef[key] === "undefined") {
           return;
@@ -314,9 +316,9 @@ export class CommentParser {
       json = JSON.parse(line);
       for (let key in json) {
         if (json[key].required === "true") {
-          required.push(key)
+          required.push(key);
         }
-    }
+      }
     }
     // No need to try/catch this JSON.parse as we already did that in the isJSONString function
     let schema = {
@@ -333,10 +335,10 @@ export class CommentParser {
     if (required.length > 0) {
       schema.content["multipart/form-data"]["schema"]["required"] = required;
     }
-    return schema
+    return schema;
   }
 
-  private parseBody(rawLine: string = '', type: string) {
+  private parseBody(rawLine: string = "", type: string) {
     let line = rawLine.replace(`@${type} `, "");
 
     const isJson = isJSONString(line);
@@ -573,9 +575,15 @@ export class ModelParser {
         }
       }
 
+      let serializeAs = null;
+      if (index > 0 && lines[index - 1].includes("serializeAs")) {
+        const match = lines[index - 1].match(/serializeAs:\s*['"]([^'"]+)['"]/);
+        serializeAs = match ? match[1] : null;
+      }
+
       let s2 = s[1].replace(/;/g, "").split(":");
 
-      let field = s2[0];
+      let field = serializeAs ?? s2[0];
       let type = s2[1];
       type = type.trim();
       let enums = [];
@@ -587,7 +595,7 @@ export class ModelParser {
         const l = lines[index - 1];
         let en = getBetweenBrackets(l, "enum");
         if (en !== "") {
-          const isArray = l.includes("[]")
+          const isArray = l.includes("[]");
           enums = en.split(",");
           example = enums[0];
           type = isArray ? "string[]" : "string";
@@ -928,7 +936,7 @@ export class ValidatorParser {
                 : this.exampleGenerator.exampleByType("number"),
               ...meta,
             };
-      if(!p["isOptional"]) obj[p["fieldName"]]["required"] = true;
+      if (!p["isOptional"]) obj[p["fieldName"]]["required"] = true;
     }
     return obj;
   }
