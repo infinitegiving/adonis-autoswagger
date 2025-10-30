@@ -18,15 +18,15 @@
   "license": "MIT",
   "dependencies": {
     "@vinejs/vine": "^2.1.0",
-    "abstract-syntax-tree": "^2.20.5",
+    "abstract-syntax-tree": "^2.22.0",
     "change-case": "^4.1.2",
-    "espree": "^9.3.1",
+    "espree": "^9.6.1",
     "extract-comments": "^1.1.0",
     "http-status-code": "^2.1.0",
     "json-to-pretty-yaml": "^1.2.2",
     "lodash": "^4.17.21",
     "parse-imports": "^1.2.0",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.2",
     "typescript-parser": "^2.6.1"
   },
   "devDependencies": {
