@@ -9,14 +9,14 @@ dependencies:
     specifier: ^2.1.0
     version: 2.1.0
   abstract-syntax-tree:
-    specifier: ^2.20.5
-    version: 2.20.5
+    specifier: ^2.22.0
+    version: 2.22.0
   change-case:
     specifier: ^4.1.2
     version: 4.1.2
   espree:
-    specifier: ^9.3.1
-    version: 9.3.1
+    specifier: ^9.6.1
+    version: 9.6.1
   extract-comments:
     specifier: ^1.1.0
     version: 1.1.0
@@ -30,11 +30,11 @@ dependencies:
     specifier: ^4.17.21
     version: 4.17.21
   parse-imports:
-    specifier: ^1.1.2
-    version: 1.1.2
+    specifier: ^1.2.0
+    version: 1.2.0
   typescript:
-    specifier: ^5.3.3
-    version: 5.3.3
+    specifier: ^5.9.3
+    version: 5.9.3
   typescript-parser:
     specifier: ^2.6.1
     version: 2.6.1
@@ -87,28 +87,28 @@ packages:
       validator: 13.12.0
     dev: false
 
-  /abstract-syntax-tree@2.20.5:
-    resolution: {integrity: sha512-xxmZemmrsmzXHxdEzy9mSM3c22hCjMcLWMUbg1LQeK1FMDLHurxnMmOAN46B0NkFgembXR17D6lDctyFhVjotQ==}
-    engines: {node: '>=14.0.0'}
+  /abstract-syntax-tree@2.22.0:
+    resolution: {integrity: sha512-Px1YA1lvdQN/DGqyZ4rIp6LH8mEtRcyFYZw48cYQ/fK0r7QffIPkEV2ob3g804aS9OjUwuKoqhPTKb3kvZVhug==}
+    engines: {node: '>=20.11.1'}
     dependencies:
       ast-types: 0.14.2
-      astring: 1.8.1
-      esquery: 1.4.0
-      estraverse: 5.3.0
-      meriyah: 4.2.0
-      source-map: 0.7.3
+      astring: 1.9.0
+      esquery: 1.6.0
+      meriyah: 4.5.0
+      pure-conditions: 1.2.3
+      source-map: 0.7.6
     dev: false
 
-  /acorn-jsx@5.3.2(acorn@8.7.0):
+  /acorn-jsx@5.3.2(acorn@8.15.0):
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
     peerDependencies:
       acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
     dependencies:
-      acorn: 8.7.0
+      acorn: 8.15.0
     dev: false
 
-  /acorn@8.7.0:
-    resolution: {integrity: sha512-V/LGr1APy+PXIwKebEWrkZPwoeoF+w1jiOBUmuxuiUIaOHtob8Qc9BTrYo7VuI5fR8tqsy+buA2WFooR5olqvQ==}
+  /acorn@8.15.0:
+    resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
     dev: false
@@ -120,8 +120,8 @@ packages:
       tslib: 2.3.1
     dev: false
 
-  /astring@1.8.1:
-    resolution: {integrity: sha512-Aj3mbwVzj7Vve4I/v2JYOPFkCGM2YS7OqQTNSxmUR+LECRpokuPgAYghePgr6SALDo5bD5DlfbSaYjOzGJZOLQ==}
+  /astring@1.9.0:
+    resolution: {integrity: sha512-LElXdjswlqjWrPpJFg1Fx4wpkOCxj1TDHlSV4PlaRxHGWko024xICaa97ZkMfs6DRKlCguiAI+rbXv5GWwXIkg==}
     hasBin: true
     dev: false
 
@@ -185,22 +185,22 @@ packages:
       tslib: 2.3.1
     dev: false
 
-  /es-module-lexer@1.4.1:
-    resolution: {integrity: sha512-cXLGjP0c4T3flZJKQSuziYoq7MlT+rnvfZjfp7h+I7K9BNX54kP9nyWvdbwjQ4u1iWbOL4u96fgeZLToQlZC7w==}
+  /es-module-lexer@1.7.0:
+    resolution: {integrity: sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==}
     dev: false
 
-  /eslint-visitor-keys@3.3.0:
-    resolution: {integrity: sha512-mQ+suqKJVyeuwGYHAdjMFqjCyfl8+Ldnxuyp3ldiMBFKkvytrXUZWaiPCEav8qDHKty44bD+qV1IP4T+w+xXRA==}
+  /eslint-visitor-keys@3.4.3:
+    resolution: {integrity: sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dev: false
 
-  /espree@9.3.1:
-    resolution: {integrity: sha512-bvdyLmJMfwkV3NCRl5ZhJf22zBFo1y8bYh3VYb+bfzqNB4Je68P2sSuXyuFquzWLebHpNd2/d5uv7yoP9ISnGQ==}
+  /espree@9.6.1:
+    resolution: {integrity: sha512-oruZaFkjorTpF32kDSI5/75ViwGeZginGGy2NoOSg3Q9bnwlnmDm4HLnkl0RE3n+njDXR037aY1+x58Z/zFdwQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dependencies:
-      acorn: 8.7.0
-      acorn-jsx: 5.3.2(acorn@8.7.0)
-      eslint-visitor-keys: 3.3.0
+      acorn: 8.15.0
+      acorn-jsx: 5.3.2(acorn@8.15.0)
+      eslint-visitor-keys: 3.4.3
     dev: false
 
   /esprima-extract-comments@1.1.0:
@@ -216,8 +216,8 @@ packages:
     hasBin: true
     dev: false
 
-  /esquery@1.4.0:
-    resolution: {integrity: sha512-cCDispWt5vHHtwMY2YrAQ4ibFkAL8RbH5YGBnZBc90MolvvfkkQcJro/aZiAQUlQ3qgrYS6D6v8Gc5G5CQsc9w==}
+  /esquery@1.6.0:
+    resolution: {integrity: sha512-ca9pw9fomFcKPvFLXhBKUK90ZvGibiGOvRJNbjljY7s7uq/5YO4BOzcYtJqExdx99rF6aAcnRxHmcUHcz6sQsg==}
     engines: {node: '>=0.10'}
     dependencies:
       estraverse: 5.3.0
@@ -271,8 +271,8 @@ packages:
       tslib: 2.3.1
     dev: false
 
-  /meriyah@4.2.0:
-    resolution: {integrity: sha512-fCVh5GB9YT53Bq14l00HLYE3i9DywrY0JVZxbk0clXWDuMsUKKwluvC5sY0bMBqHbnIbpIjfSSIsnrzbauA8Yw==}
+  /meriyah@4.5.0:
+    resolution: {integrity: sha512-Rbiu0QPIxTXgOXwiIpRVJfZRQ2FWyfzYrOGBs9SN5RbaXg1CN5ELn/plodwWwluX93yzc4qO/bNIen1ThGFCxw==}
     engines: {node: '>=10.4.0'}
     dev: false
 
@@ -300,11 +300,11 @@ packages:
     engines: {node: '>=6'}
     dev: false
 
-  /parse-imports@1.1.2:
-    resolution: {integrity: sha512-UgTSNWlBvx+f4nxVSH3fOyJPJKol8GkFuG8mN8q9FqtmJgwaEx0azPRlXXX0klNlRxoP2gwme00TPDSm6rm/IA==}
+  /parse-imports@1.2.0:
+    resolution: {integrity: sha512-K5aG9cextqjAlyevwuSMjWPbBr+X8xGgfHS4VopbKC1u3jLndRGl2CoUHMTvuD6LIg4di5TzH/Pw9+XZyTjI/w==}
     engines: {node: '>= 12.17'}
     dependencies:
-      es-module-lexer: 1.4.1
+      es-module-lexer: 1.7.0
       slashes: 3.0.12
     dev: false
 
@@ -320,6 +320,10 @@ packages:
     dependencies:
       dot-case: 3.0.4
       tslib: 2.3.1
+    dev: false
+
+  /pure-conditions@1.2.3:
+    resolution: {integrity: sha512-TlBrX7PHkaglbE9eYYnc2Zk10PZ9wWllVjY33PQDp1/LK3aGC81RFKr0QzLwiKfipJlZZAK197c9YQFO6BAOFw==}
     dev: false
 
   /remedial@1.0.8:
@@ -349,9 +353,9 @@ packages:
       tslib: 2.3.1
     dev: false
 
-  /source-map@0.7.3:
-    resolution: {integrity: sha512-CkCj6giN3S+n9qrYiBTX5gystlENnRW5jZeNLHpe6aue+SrHcG5VYwujhW9s4dY31mEGsxBDrHR6oI69fTXsaQ==}
-    engines: {node: '>= 8'}
+  /source-map@0.7.6:
+    resolution: {integrity: sha512-i5uvt8C3ikiWeNZSVZNWcfZPItFQOsYTUAOkcUPGd8DqDy1uOUikjt5dG+uRlwyvR108Fb9DOd4GvXfT0N2/uQ==}
+    engines: {node: '>= 12'}
     dev: false
 
   /strip-json-comments@1.0.4:
@@ -383,8 +387,8 @@ packages:
     hasBin: true
     dev: false
 
-  /typescript@5.3.3:
-    resolution: {integrity: sha512-pXWcraxM0uxAS+tN0AG/BF2TyqmHO014Z070UsJ+pFvYuRSq8KH8DmWpnbXe0pEPDHXZV3FcAbJkijJ5oNEnWw==}
+  /typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
     dev: false
