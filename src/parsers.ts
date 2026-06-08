@@ -168,7 +168,9 @@ export class CommentParser {
       }
     }
 
-    let p = {
+    let isArray = meta?.includes("@array") ?? false;
+
+    let p: any = {
       in: where,
       name: param,
       description: des,
@@ -179,10 +181,20 @@ export class CommentParser {
       required: required,
     };
 
-    if (enums.length > 1) {
-      p["schema"]["enum"] = enums;
+    if (isArray) {
+      p["schema"] = {
+        type: "array",
+        items: {
+          type: type,
+          ...(enums.length > 1 ? { enum: enums } : {}),
+        },
+        example: [example],
+      };
+    } else {
+      if (enums.length > 1) {
+        p["schema"]["enum"] = enums;
+      }
     }
-
     return { [param]: p };
   }
 
