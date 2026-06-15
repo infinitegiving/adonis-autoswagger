@@ -1000,6 +1000,18 @@ export class InterfaceParser {
 
   parseType(type, field) {
     let isArray = false;
+
+    // Handle union types like "number | null" before any other resolution
+    let nullableUnion = false;
+    if (type.includes(" | ")) {
+      const types = type.split(" | ").map((t) => t.trim());
+      if (types.includes("null")) {
+        nullableUnion = true;
+      }
+      // take first non-null type; fall back to string if only null was present
+      type = types.filter((t) => t !== "null")[0] ?? "string";
+    }
+
     if (type.includes("[]")) {
       type = type.replace("[]", "");
       isArray = true;
@@ -1027,7 +1039,7 @@ export class InterfaceParser {
       example = enums[0];
     }
     let indicator = "type";
-    let notRequired = field.includes("?");
+    let notRequired = field.includes("?") || nullableUnion;
 
     prop["nullable"] = notRequired;
     if (type.toLowerCase() === "datetime") {
