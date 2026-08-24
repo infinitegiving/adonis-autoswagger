@@ -151,6 +151,10 @@ export class CommentParser {
       des = "";
     }
 
+    // A repeated query parameter is written as @enum(a, b)[] or @type(string)[]; the brackets sit
+    // outside the annotation, so they are read off the meta rather than from inside it.
+    let isArray = false;
+
     if (typeof meta !== "undefined") {
       if (meta.includes("@required")) {
         required = true;
@@ -158,29 +162,37 @@ export class CommentParser {
       let en = getBetweenBrackets(meta, "enum");
       example = getBetweenBrackets(meta, "example");
       const mtype = getBetweenBrackets(meta, "type");
+      isArray = /@(enum|type)\([^)]*\)\s*\[\]/.test(meta);
       if (mtype !== "") {
-        type = mtype;
+        type = mtype.replace("[]", "").trim();
+        if (mtype.trim().endsWith("[]")) {
+          isArray = true;
+        }
       }
       if (en !== "") {
-        enums = en.split(",");
+        enums = en.split(",").map((e) => e.trim());
         example = enums[0];
       }
+    }
+
+    const itemSchema: any = {
+      example: example,
+      type: type,
+    };
+
+    if (enums.length > 1) {
+      itemSchema.enum = enums;
     }
 
     let p = {
       in: where,
       name: param,
       description: des,
-      schema: {
-        example: example,
-        type: type,
-      },
+      schema: isArray
+        ? { type: "array", items: itemSchema }
+        : itemSchema,
       required: required,
     };
-
-    if (enums.length > 1) {
-      p["schema"]["enum"] = enums;
-    }
 
     return { [param]: p };
   }
@@ -643,9 +655,11 @@ export class ModelParser {
       type = type.trim();
 
       //TODO: make oneOf
+      let nullableUnion = false;
       if (type.includes(" | ")) {
         const types = type.split(" | ");
-        type = types.filter((t) => t !== "null")[0];
+        nullableUnion = types.some((t) => t === "null" || t === "undefined");
+        type = types.filter((t) => t !== "null" && t !== "undefined")[0];
       }
 
       field = field.replace("()", "");
@@ -736,6 +750,16 @@ export class ModelParser {
 
       prop[indicator] = type;
       prop["example"] = example;
+      // A column typed `X | null` had its null dropped above without recording it, so the schema
+      // claimed the value is always present. OpenAPI 3.0 wants the flag beside the type, and a
+      // reference has to be wrapped for it to apply to the property rather than the schema.
+      if (nullableUnion) {
+        if (indicator === "$ref") {
+          delete prop["$ref"];
+          prop["allOf"] = [{ $ref: type }];
+        }
+        prop["nullable"] = true;
+      }
       // if array
       if (isArray) {
         props[field] = { type: "array", items: prop };
@@ -1126,6 +1150,15 @@ export class InterfaceParser {
       for (const [key, value] of Object.entries(allProperties)) {
         if (typeof value === 'object' && value !== null && 'type' in value) {
           parsedProperties[key] = value;
+        } else if (typeof value === 'object' && value !== null) {
+          // An inline object collected while parsing; `type` would otherwise be set to the object
+          // itself, which is not a type name.
+          parsedProperties[key] = {
+            type: "object",
+            nullable: key.includes("?"),
+            properties: this.parseProps(value),
+            example: this.objToExample(value),
+          };
         } else {
           parsedProperties[key] = this.parseType(value, key);
         }
@@ -1187,8 +1220,27 @@ export class InterfaceParser {
     const enumValues = getBetweenBrackets(meta, "enum");
     const enums = enumValues === "" ? [] : enumValues.split(",").map((e) => e.trim());
 
+    // `X | null` reached the $ref branch whole, pointing at a schema named "X | null" that nothing
+    // declares. Drop the null and undefined members and carry the nullability on the property.
+    let unionNullable = false;
+    if (typeof type === 'string' && type.includes("|")) {
+      const members = type.split("|").map((m) => m.trim()).filter((m) => m !== "");
+      const nullMembers = members.filter((m) => m === "null" || m === "undefined");
+      const rest = members.filter((m) => m !== "null" && m !== "undefined");
+      if (nullMembers.length > 0 && rest.length === 1) {
+        unionNullable = true;
+        type = rest[0];
+      }
+    }
+
+    // A free-form value has no schema to point at, so describe it as an unconstrained object.
+    if (typeof type === 'string' && ["any", "unknown", "object", "Record<string, never>", "Record<string, unknown>", "Record<string, any>"].includes(type)) {
+      const freeForm: any = { type: "object", additionalProperties: true, nullable: field.includes("?") || unionNullable };
+      return isArray ? { type: "array", items: freeForm } : freeForm;
+    }
+
     let prop: any = { type: type };
-    let notRequired = field.includes("?");
+    let notRequired = field.includes("?") || unionNullable;
     prop.nullable = notRequired;
 
     if (typeof type === 'string' && type.toLowerCase() === "datetime") {
@@ -1203,7 +1255,13 @@ export class InterfaceParser {
       const standardTypes = ["string", "number", "boolean", "integer"];
       if (typeof type === 'string' && !standardTypes.includes(type.toLowerCase())) {
         delete prop.type;
-        prop.$ref = `#/components/schemas/${type}`;
+        if (notRequired) {
+          // OpenAPI 3.0 ignores `nullable` next to a sibling $ref, so the reference goes inside
+          // allOf where the nullability applies to the property rather than the schema.
+          prop.allOf = [{ $ref: `#/components/schemas/${type}` }];
+        } else {
+          prop.$ref = `#/components/schemas/${type}`;
+        }
       } else {
         if (typeof type === 'string') {
           prop.type = type.toLowerCase();
