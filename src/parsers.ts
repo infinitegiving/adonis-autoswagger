@@ -92,8 +92,7 @@ export class CommentParser {
       if (!responses[key]["description"]) {
         responses[key][
           "description"
-        ] = `Returns **${key}** (${HTTPStatusCode.getMessage(key)}) as **${
-          Object.entries(responses[key]["content"])[0][0]
+        ] = `Returns **${key}** (${HTTPStatusCode.getMessage(key)}) as **${Object.entries(responses[key]["content"])[0][0]
         }**`;
       }
     }
@@ -152,6 +151,10 @@ export class CommentParser {
       des = "";
     }
 
+    // A repeated query parameter is written as @enum(a, b)[] or @type(string)[]; the brackets sit
+    // outside the annotation, so they are read off the meta rather than from inside it.
+    let isArray = false;
+
     if (typeof meta !== "undefined") {
       if (meta.includes("@required")) {
         required = true;
@@ -159,29 +162,37 @@ export class CommentParser {
       let en = getBetweenBrackets(meta, "enum");
       example = getBetweenBrackets(meta, "example");
       const mtype = getBetweenBrackets(meta, "type");
+      isArray = /@(enum|type)\([^)]*\)\s*\[\]/.test(meta);
       if (mtype !== "") {
-        type = mtype;
+        type = mtype.replace("[]", "").trim();
+        if (mtype.trim().endsWith("[]")) {
+          isArray = true;
+        }
       }
       if (en !== "") {
-        enums = en.split(",");
+        enums = en.split(",").map((e) => e.trim());
         example = enums[0];
       }
+    }
+
+    const itemSchema: any = {
+      example: example,
+      type: type,
+    };
+
+    if (enums.length > 1) {
+      itemSchema.enum = enums;
     }
 
     let p = {
       in: where,
       name: param,
       description: des,
-      schema: {
-        example: example,
-        type: type,
-      },
+      schema: isArray
+        ? { type: "array", items: itemSchema }
+        : itemSchema,
       required: required,
     };
-
-    if (enums.length > 1) {
-      p["schema"]["enum"] = enums;
-    }
 
     return { [param]: p };
   }
@@ -407,7 +418,7 @@ export class CommentParser {
               if (_.has(value, "content.application/json.schema.items.$ref")) {
                 ref =
                   value["content"]["application/json"]["schema"]["items"][
-                    "$ref"
+                  "$ref"
                   ];
               }
               value = {
@@ -644,9 +655,11 @@ export class ModelParser {
       type = type.trim();
 
       //TODO: make oneOf
+      let nullableUnion = false;
       if (type.includes(" | ")) {
         const types = type.split(" | ");
-        type = types.filter((t) => t !== "null")[0];
+        nullableUnion = types.some((t) => t === "null" || t === "undefined");
+        type = types.filter((t) => t !== "null" && t !== "undefined")[0];
       }
 
       field = field.replace("()", "");
@@ -737,6 +750,16 @@ export class ModelParser {
 
       prop[indicator] = type;
       prop["example"] = example;
+      // A column typed `X | null` had its null dropped above without recording it, so the schema
+      // claimed the value is always present. OpenAPI 3.0 wants the flag beside the type, and a
+      // reference has to be wrapped for it to apply to the property rather than the schema.
+      if (nullableUnion) {
+        if (indicator === "$ref") {
+          delete prop["$ref"];
+          prop["allOf"] = [{ $ref: type }];
+        }
+        prop["nullable"] = true;
+      }
       // if array
       if (isArray) {
         props[field] = { type: "array", items: prop };
@@ -802,6 +825,7 @@ export class ValidatorParser {
     // if no errors, this means all object-fields are of type number (which we use by default)
     // and we can return the object
     if (e === null) {
+      obj["example"] = testObj;
       return obj;
     }
 
@@ -913,23 +937,23 @@ export class ValidatorParser {
         p["type"] === "object"
           ? { type: "object", properties: this.parseSchema(p, refs) }
           : p["type"] === "array"
-          ? {
+            ? {
               type: "array",
               items:
                 p["each"]["type"] === "object"
                   ? {
-                      type: "object",
-                      properties: this.parseSchema(p["each"], refs),
-                    }
+                    type: "object",
+                    properties: this.parseSchema(p["each"], refs),
+                  }
                   : {
-                      type: "number",
-                      example: meta.minimum
-                        ? meta.minimum
-                        : this.exampleGenerator.exampleByType("number"),
-                      ...meta,
-                    },
+                    type: "number",
+                    example: meta.minimum
+                      ? meta.minimum
+                      : this.exampleGenerator.exampleByType("number"),
+                    ...meta,
+                  },
             }
-          : {
+            : {
               type: "number",
               example: meta.minimum
                 ? meta.minimum
@@ -945,9 +969,12 @@ export class ValidatorParser {
 export class InterfaceParser {
   exampleGenerator: ExampleGenerator;
   snakeCase: boolean;
-  constructor(snakeCase: boolean) {
+  schemas: any = {};
+
+  constructor(snakeCase: boolean, schemas: any = {}) {
     this.snakeCase = snakeCase;
     this.exampleGenerator = new ExampleGenerator({});
+    this.schemas = schemas;
   }
 
   objToExample(obj) {
@@ -964,8 +991,6 @@ export class InterfaceParser {
     });
     return example;
   }
-
-  ifToJson(data) {}
 
   parseProps(obj) {
     const no = {};
@@ -986,145 +1011,277 @@ export class InterfaceParser {
     return no;
   }
 
-  parseType(type, field) {
-    let isArray = false;
-    if (type.includes("[]")) {
-      type = type.replace("[]", "");
-      isArray = true;
-    }
-    let meta = "";
-    if (type.includes("@enum")) {
-      // Extract the enum values from the line
-      meta = type.substring(type.indexOf("@enum"));
-      type = "string";
-    }
-    let prop: any = { type: type };
-    let en = getBetweenBrackets(meta, "enum");
-    let example = getBetweenBrackets(meta, "example");
-    let enums = [];
-    if (example === "") {
-      example = this.exampleGenerator.exampleByField(field);
+  getInheritedProperties(baseType: string): any {
+
+    if (this.schemas[baseType]?.properties) {
+      return {
+        properties: this.schemas[baseType].properties,
+        required: this.schemas[baseType].required || []
+      };
     }
 
-    if (example === null) {
-      example = this.exampleGenerator.exampleByType(type);
+    const cleanType = baseType
+      .split('/')
+      .pop()
+      ?.replace('.ts', '')
+      ?.replace(/^[#@]/, '');
+
+    if (!cleanType) return { properties: {}, required: [] };
+
+    if (this.schemas[cleanType]?.properties) {
+      return {
+        properties: this.schemas[cleanType].properties,
+        required: this.schemas[cleanType].required || []
+      };
     }
 
-    if (en !== "") {
-      enums = en.split(",");
-      example = enums[0];
-    }
-    let indicator = "type";
-    let notRequired = field.includes("?");
+    const variations = [
+      cleanType,
+      `#models/${cleanType}`,
+      cleanType.replace(/Model$/, ''),
+      `${cleanType}Model`
+    ];
 
-    prop["nullable"] = notRequired;
-    if (type.toLowerCase() === "datetime") {
-      prop[indicator] = "string";
-      prop["format"] = "date-time";
-      prop["example"] = "2021-03-23T16:13:08.489+01:00";
-    } else if (type.toLowerCase() === "date") {
-      prop[indicator] = "string";
-      prop["format"] = "date";
-      prop["example"] = "2021-03-23";
-    } else {
-      if (!standardTypes.includes(type)) {
-        indicator = "$ref";
-        type = "#/components/schemas/" + type;
+    for (const variation of variations) {
+      if (this.schemas[variation]?.properties) {
+        return {
+          properties: this.schemas[variation].properties,
+          required: this.schemas[variation].required || []
+        };
       }
+    }
 
-      prop[indicator] = type;
-      prop["example"] = example;
-      if (enums.length > 0) {
-        prop["enum"] = enums.map((e) => e.trim()); // Clean the enum by removing start and end spaces
-      }
-      prop["nullable"] = notRequired;
-    }
-    if (isArray) {
-      prop = { type: "array", items: prop };
-    }
-    return prop;
+    return { properties: {}, required: [] };
   }
 
   parseInterfaces(data) {
-    // remove empty lines
     data = data.replace(/\t/g, "").replace(/^(?=\n)$|^\s*|\s*$|\n\n+/gm, "");
 
-    let name = "";
-    let props = {};
-    const l = data.split("\n");
-    let ifs = {};
-    l.forEach((line, index) => {
-      if (line.includes(";")) {
-        line = line.replace(";", "");
-      }
-      if (
-        line.startsWith("//") ||
-        line.startsWith("/*") ||
-        line.startsWith("import") ||
-        line.startsWith("*")
-      )
-        return;
-      if (
-        line.startsWith("interface ") ||
-        line.startsWith("export default interface ") ||
-        line.startsWith("export interface ")
-      ) {
-        props = {};
-        name = line;
-        name = name.replace("export default interface ", "");
-        name = name.replace("export interface ", "");
-        name = name.replace("export ", "");
-        name = name.replace("interface ", "");
-        name = name.replace("{", "");
-        name = name.trim();
-        ifs[name] = "{";
-        return;
+    let currentInterface = null;
+    const nested: any[] = [];
+    const interfaces = {};
+    const interfaceDefinitions = new Map();
+
+    const lines = data.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      if (line.startsWith("interface") || line.startsWith("export interface") || line.startsWith("export default interface")) {
+        // `export default interface X` puts the name at index 3, not 2, so read the word after
+        // the `interface` keyword instead of counting from the start of the line.
+        const parts = line.split(/\s+/);
+        const name = parts[parts.indexOf("interface") + 1]?.split(/[{\s]/)[0];
+        const extendedTypes = this.parseExtends(line);
+        interfaceDefinitions.set(name, {
+          extends: extendedTypes,
+          properties: {},
+          required: [],
+          startLine: i
+        });
+        currentInterface = name;
+        nested.length = 0;
+        continue;
       }
 
-      let nl = line;
-
-      let [f, t] = line.split(": ");
-      if (f && t) {
-        if (f.startsWith("'") && f.endsWith("'")) {
-          f = f.replaceAll("'", '"');
+      // An inline object opens a scope of its own. Without tracking them, its closing brace ends
+      // the interface, its own properties land on the parent, and every property declared after it
+      // is dropped.
+      if (currentInterface && (line === "}" || line === "},")) {
+        if (nested.length > 0) {
+          nested.pop();
+        } else {
+          currentInterface = null;
         }
-        if (!f.startsWith('"') && !f.endsWith('"')) {
-          f = `"${f}"`;
-        }
+        continue;
+      }
 
-        let comma = "";
-        if (!t.endsWith("{")) {
-          if (l[index + 1] !== "}") {
-            comma = ",";
+      if (currentInterface && line && !line.startsWith("//") && !line.startsWith("/*") && !line.startsWith("*")) {
+        const def = interfaceDefinitions.get(currentInterface);
+        if (def) {
+          const previousLine = i > 0 ? lines[i - 1].trim() : "";
+          const isRequired = previousLine.includes("@required");
+
+          // Split on the first colon only: a type can carry one of its own, in a nested generic
+          // (`Record<string, never>`) or in a url inside a trailing comment.
+          const colon = line.indexOf(":");
+          const prop = colon === -1 ? "" : line.slice(0, colon).trim();
+          const type = colon === -1 ? "" : line.slice(colon + 1).trim();
+          if (prop && type) {
+            const cleanProp = prop.replace("?", "");
+            const target = nested.length > 0 ? nested[nested.length - 1] : def.properties;
+            const isNestedObject = type.replace(";", "").trim() === "{";
+
+            if (isNestedObject) {
+              const child = {};
+              target[cleanProp] = child;
+              nested.push(child);
+            } else {
+              target[cleanProp] = type.replace(";", "");
+            }
+
+            if (nested.length === 0 && (isRequired || !prop.includes("?"))) {
+              def.required.push(cleanProp);
+            }
           }
-          t = `"${t}"`;
         }
-        nl = `${f}: ${t}${comma}`;
-      }
-      if (line.endsWith("}") && l[index + 1] && !l[index + 1].endsWith("}")) {
-        nl += ",";
-      }
-      ifs[name] += nl;
-    });
-
-    for (const [n, value] of Object.entries(ifs)) {
-      try {
-        let j = JSON.parse(value as string);
-        ifs[n] = {
-          type: "object",
-          properties: this.parseProps(j),
-          description: n + " (Interface)",
-        };
-      } catch (e) {
-        ifs[n] = {};
       }
     }
-    const cleaned = {};
-    Object.entries(ifs).map(([key, value]) => {
-      if (key !== "") {
-        cleaned[key] = value;
+
+    for (const [name, def] of interfaceDefinitions) {
+      let allProperties = {};
+      let requiredFields = new Set(def.required);
+
+      for (const baseType of def.extends) {
+        const baseSchema = this.schemas[baseType];
+        if (baseSchema) {
+          if (baseSchema.properties) {
+            Object.assign(allProperties, baseSchema.properties);
+          }
+
+          if (baseSchema.required) {
+            baseSchema.required.forEach(field => requiredFields.add(field));
+          }
+        }
       }
-    });
-    return cleaned;
+
+      Object.assign(allProperties, def.properties);
+
+      const parsedProperties = {};
+      for (const [key, value] of Object.entries(allProperties)) {
+        if (typeof value === 'object' && value !== null && 'type' in value) {
+          parsedProperties[key] = value;
+        } else if (typeof value === 'object' && value !== null) {
+          // An inline object collected while parsing; `type` would otherwise be set to the object
+          // itself, which is not a type name.
+          parsedProperties[key] = {
+            type: "object",
+            nullable: key.includes("?"),
+            properties: this.parseProps(value),
+            example: this.objToExample(value),
+          };
+        } else {
+          parsedProperties[key] = this.parseType(value, key);
+        }
+      }
+
+      const schema = {
+        type: "object",
+        properties: parsedProperties,
+        required: Array.from(requiredFields),
+        description: `${name}${def.extends.length ? ` extends ${def.extends.join(", ")}` : ""} (Interface)`
+      };
+
+      if (schema.required.length === 0) {
+        delete schema.required;
+      }
+
+      interfaces[name] = schema;
+    }
+
+    return interfaces;
+  }
+
+  parseExtends(line: string): string[] {
+    const matches = line.match(/extends\s+([^{]+)/);
+    if (!matches) return [];
+
+    return matches[1]
+      .split(",")
+      .map(type => type.trim())
+      .map(type => {
+        const cleanType = type.split('/').pop();
+        return cleanType?.replace(/\.ts$/, '') || type;
+      });
+  }
+
+  parseType(type: string | any, field: string) {
+    if (typeof type === 'object' && type !== null && 'type' in type) {
+      return type;
+    }
+
+    let isArray = false;
+    if (typeof type === 'string' && type.includes("[]")) {
+      type = type.replace("[]", "");
+      isArray = true;
+    }
+
+    if (typeof type === 'string') {
+      type = type.replace(/[;\r\n]/g, '').trim();
+    }
+
+    // An interface property carries its `// @enum(...)` comment in the type string. Keep the values
+    // and fall back to a string type, or a literal union reaches parseType as a schema name and
+    // becomes a $ref to something that was never declared.
+    let meta = "";
+    if (typeof type === 'string' && type.includes("@enum")) {
+      meta = type.substring(type.indexOf("@enum"));
+      type = "string";
+    }
+    const enumValues = getBetweenBrackets(meta, "enum");
+    const enums = enumValues === "" ? [] : enumValues.split(",").map((e) => e.trim());
+
+    // `X | null` reached the $ref branch whole, pointing at a schema named "X | null" that nothing
+    // declares. Drop the null and undefined members and carry the nullability on the property.
+    let unionNullable = false;
+    if (typeof type === 'string' && type.includes("|")) {
+      const members = type.split("|").map((m) => m.trim()).filter((m) => m !== "");
+      const nullMembers = members.filter((m) => m === "null" || m === "undefined");
+      const rest = members.filter((m) => m !== "null" && m !== "undefined");
+      if (nullMembers.length > 0 && rest.length === 1) {
+        unionNullable = true;
+        type = rest[0];
+      }
+    }
+
+    // A free-form value has no schema to point at, so describe it as an unconstrained object.
+    if (typeof type === 'string' && ["any", "unknown", "object", "Record<string, never>", "Record<string, unknown>", "Record<string, any>"].includes(type)) {
+      const freeForm: any = { type: "object", additionalProperties: true, nullable: field.includes("?") || unionNullable };
+      return isArray ? { type: "array", items: freeForm } : freeForm;
+    }
+
+    let prop: any = { type: type };
+    let notRequired = field.includes("?") || unionNullable;
+    prop.nullable = notRequired;
+
+    if (typeof type === 'string' && type.toLowerCase() === "datetime") {
+      prop.type = "string";
+      prop.format = "date-time";
+      prop.example = "2021-03-23T16:13:08.489+01:00";
+    } else if (typeof type === 'string' && type.toLowerCase() === "date") {
+      prop.type = "string";
+      prop.format = "date";
+      prop.example = "2021-03-23";
+    } else {
+      const standardTypes = ["string", "number", "boolean", "integer"];
+      if (typeof type === 'string' && !standardTypes.includes(type.toLowerCase())) {
+        delete prop.type;
+        if (notRequired) {
+          // OpenAPI 3.0 ignores `nullable` next to a sibling $ref, so the reference goes inside
+          // allOf where the nullability applies to the property rather than the schema.
+          prop.allOf = [{ $ref: `#/components/schemas/${type}` }];
+        } else {
+          prop.$ref = `#/components/schemas/${type}`;
+        }
+      } else {
+        if (typeof type === 'string') {
+          prop.type = type.toLowerCase();
+        }
+        prop.example = this.exampleGenerator.exampleByType(type) ||
+          this.exampleGenerator.exampleByField(field);
+      }
+      if (enums.length > 0) {
+        prop.enum = enums;
+        prop.example = enums[0];
+      }
+    }
+
+    if (isArray) {
+      return {
+        type: "array",
+        items: prop
+      };
+    }
+
+    return prop;
   }
 }
